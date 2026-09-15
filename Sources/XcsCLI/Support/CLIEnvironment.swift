@@ -24,4 +24,16 @@ enum CLIEnvironment {
             workingDirectory: workingDirectory
         )
     }
+
+    /// Builds the one-off `--xcode`/`--xcode-path` override shared by every
+    /// command that resolves a target. `--xcode-path` wins if both are given.
+    static func makeVersionOverride(xcode: String?, xcodePath: String?) -> VersionOverride? {
+        if let xcodePath {
+            return .appPath(URL(fileURLWithPath: xcodePath))
+        }
+        if let xcode {
+            return .version(xcode)
+        }
+        return nil
+    }
 }

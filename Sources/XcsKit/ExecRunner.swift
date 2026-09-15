@@ -22,7 +22,7 @@ public struct ExecRunner: Sendable {
         guard !command.isEmpty else { throw Error.emptyCommand }
         let candidates = try await candidateDiscovery.resolveCandidates(explicitTarget: target)
         guard let resolved = candidates.first else {
-            throw OpenRunner.Error.noCandidates
+            throw CandidateDiscovery.Error.noCandidates
         }
         try execer.exec(
             command: command,

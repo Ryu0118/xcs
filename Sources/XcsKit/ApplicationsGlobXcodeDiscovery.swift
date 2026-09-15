@@ -2,8 +2,11 @@ import FileManagerProtocol
 import Foundation
 import XcsCore
 
-/// Fallback discovery mechanism: glob `/Applications/Xcode*.app` directly,
-/// used when `mdfind` is unavailable or returns nothing.
+/// Fallback discovery mechanism, used when `mdfind` is unavailable or
+/// returns nothing: list `/Applications` directly and filter to
+/// `Xcode*.app` entries (a single-directory prefix/suffix filter, not a
+/// full glob engine — the pattern is fixed and shallow enough that pulling
+/// in `Glob` for it would be more machinery than the job needs).
 public struct ApplicationsGlobXcodeDiscovery: XcodeDiscovery {
     private let fileManager: any FileManagerProtocol
     private let versionReader: InfoPlistVersionReader

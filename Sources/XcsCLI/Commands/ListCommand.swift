@@ -27,11 +27,7 @@ public struct ListCommand: AsyncParsableCommand {
                 }
             }
         } catch {
-            if json {
-                CLIOutput.printJSONError(String(describing: error))
-            } else {
-                CLIOutput.printError(String(describing: error))
-            }
+            CLIOutput.reportFailure(error, json: json)
             throw ExitCode.failure
         }
     }

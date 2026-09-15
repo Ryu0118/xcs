@@ -10,12 +10,15 @@ public enum DoctorEntryResolution: Equatable, Sendable {
 
 public struct DoctorReport: Equatable, Sendable {
     public let configurationFound: URL?
-    public let discoveredInstallations: [XcodeInstallation]
+    /// `nil` when discovery itself failed — kept distinct from "discovery
+    /// succeeded but found nothing" so a doctor run never silently hides
+    /// that the discovery mechanism itself is broken.
+    public let discoveredInstallations: [XcodeInstallation]?
     public let entryResolutions: [String: DoctorEntryResolution]
 
     public init(
         configurationFound: URL?,
-        discoveredInstallations: [XcodeInstallation],
+        discoveredInstallations: [XcodeInstallation]?,
         entryResolutions: [String: DoctorEntryResolution]
     ) {
         self.configurationFound = configurationFound
@@ -44,44 +47,34 @@ public struct DoctorRunner: Sendable {
         self.stopAt = stopAt
     }
 
-    public func run() async throws -> DoctorReport {
+    public func run() async -> DoctorReport {
         let installations = try? await discovery.discoverInstallations()
         let loader = XcodeVersionsLoader(fileManager: fileManager)
         let resolver = TargetResolver()
 
         guard let loaded = try? loader.load(startingAt: workingDirectory, stopAt: stopAt) else {
-            return DoctorReport(
-                configurationFound: nil,
-                discoveredInstallations: installations ?? [],
-                entryResolutions: [:]
-            )
+            return DoctorReport(configurationFound: nil, discoveredInstallations: installations, entryResolutions: [:])
         }
 
         var resolutions: [String: DoctorEntryResolution] = [:]
         for (key, versionString) in loaded.document.targets {
             let targetURL = loaded.configurationDirectory.appending(path: key)
-            let specResult = resolver.resolve(
-                target: targetURL,
-                relativeTo: loaded.configurationDirectory,
-                in: loaded.document
-            )
-            switch specResult {
-            case let .success(spec):
-                let matchResult = VersionMatcher.resolve(spec: spec, installations: installations ?? [])
-                switch matchResult {
-                case .success:
-                    resolutions[key] = .ok(version: versionString)
-                case let .failure(error):
-                    resolutions[key] = .error(error.description)
-                }
-            case let .failure(error):
-                resolutions[key] = .error(error.description)
+            do {
+                let spec = try resolver.resolve(
+                    target: targetURL,
+                    relativeTo: loaded.configurationDirectory,
+                    in: loaded.document
+                ).get()
+                _ = try VersionMatcher.resolve(spec: spec, installations: installations ?? []).get()
+                resolutions[key] = .ok(version: versionString)
+            } catch {
+                resolutions[key] = .error(String(describing: error))
             }
         }
 
         return DoctorReport(
             configurationFound: loaded.configurationDirectory.appending(path: ".xcodeversions.yml"),
-            discoveredInstallations: installations ?? [],
+            discoveredInstallations: installations,
             entryResolutions: resolutions
         )
     }

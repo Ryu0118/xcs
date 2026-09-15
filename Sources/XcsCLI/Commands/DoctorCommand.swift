@@ -8,6 +8,9 @@ public struct DoctorCommand: AsyncParsableCommand {
         abstract: "Diagnose .xcodeversions.yml discovery and Xcode installation resolvability."
     )
 
+    @Flag(name: .long, help: "Emit machine-readable JSON on stdout.")
+    var json = false
+
     public init() {}
 
     public mutating func run() async throws {
@@ -19,7 +22,12 @@ public struct DoctorCommand: AsyncParsableCommand {
             workingDirectory: workingDirectory
         )
 
-        let report = try await runner.run()
+        let report = await runner.run()
+
+        if json {
+            CLIOutput.printJSON(DoctorReportJSON(report))
+            return
+        }
 
         if let config = report.configurationFound {
             print("✅ configuration: \(config.path)")
@@ -27,10 +35,13 @@ public struct DoctorCommand: AsyncParsableCommand {
             print("⚠️  configuration: no .xcodeversions.yml found in \(workingDirectory.path) or any ancestor")
         }
 
-        if report.discoveredInstallations.isEmpty {
+        switch report.discoveredInstallations {
+        case nil:
+            print("❌ installations: discovery failed")
+        case let .some(installations) where installations.isEmpty:
             print("⚠️  installations: none discovered")
-        } else {
-            print("✅ installations: \(report.discoveredInstallations.map(\.shortVersion).joined(separator: ", "))")
+        case let .some(installations):
+            print("✅ installations: \(installations.map(\.shortVersion).joined(separator: ", "))")
         }
 
         for (key, result) in report.entryResolutions.sorted(by: { $0.key < $1.key }) {

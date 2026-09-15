@@ -19,4 +19,15 @@ public enum CLIOutput {
         }
         print(string)
     }
+
+    /// Reports a caught error in the format the `--json` flag selected.
+    /// Shared by every command's `catch` block to avoid repeating the
+    /// json/non-json branch at each call site.
+    public static func reportFailure(_ error: some Swift.Error, json: Bool) {
+        if json {
+            printJSONError(String(describing: error))
+        } else {
+            printError(String(describing: error))
+        }
+    }
 }

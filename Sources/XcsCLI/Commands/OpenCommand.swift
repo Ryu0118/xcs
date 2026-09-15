@@ -39,19 +39,17 @@ public struct OpenCommand: AsyncParsableCommand {
             isInteractive: isInteractive
         )
 
+        let override = CLIEnvironment.makeVersionOverride(xcode: xcode, xcodePath: xcodePath)
+
         do {
-            let result = try await runner.run(explicitTarget: target)
+            let result = try await runner.run(explicitTarget: target, override: override)
             if json {
                 CLIOutput.printJSON(ResolvedTargetJSON(result))
             } else {
                 print("Opened \(result.description)")
             }
         } catch {
-            if json {
-                CLIOutput.printJSONError(String(describing: error))
-            } else {
-                CLIOutput.printError(String(describing: error))
-            }
+            CLIOutput.reportFailure(error, json: json)
             throw ExitCode.failure
         }
     }

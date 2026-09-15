@@ -3,17 +3,31 @@ import Foundation
 import XcsConfig
 import XcsCore
 
+/// A one-off override that bypasses `.xcodeversions.yml` resolution entirely,
+/// for `--xcode <version>` / `--xcode-path <path>`. Never mutates the yml or
+/// `xcode-select`.
+public enum VersionOverride: Equatable, Sendable {
+    case version(String)
+    case appPath(URL)
+}
+
 /// Resolves the set of candidate targets to open for a given cwd:
 /// `.xcodeversions.yml` targets when a config exists, or `*.xcworkspace`/
 /// `*.xcodeproj` found directly in cwd otherwise.
 public struct CandidateDiscovery: Sendable {
     public enum Error: Swift.Error, Equatable, Sendable, CustomStringConvertible {
         case noCandidates
+        case xcodePathNotInstalled(URL)
+        case ambiguous(candidates: [ResolvedTarget])
 
         public var description: String {
             switch self {
             case .noCandidates:
                 "No .xcworkspace or .xcodeproj found, and no .xcodeversions.yml entries resolved."
+            case let .xcodePathNotInstalled(path):
+                "\(path.path) does not match any discovered Xcode installation."
+            case let .ambiguous(candidates):
+                "Multiple targets matched: " + candidates.map(\.description).joined(separator: ", ")
             }
         }
     }
@@ -41,14 +55,23 @@ public struct CandidateDiscovery: Sendable {
 
     /// Resolves candidates. When `explicitTarget` is given, the result is
     /// always exactly one candidate (or an error) — callers never reach the
-    /// picker branch in that case.
-    public func resolveCandidates(explicitTarget: String?) async throws -> [ResolvedTarget] {
+    /// picker branch in that case. When `override` is given, `.xcodeversions.yml`
+    /// resolution is bypassed entirely for every candidate.
+    public func resolveCandidates(
+        explicitTarget: String?,
+        override: VersionOverride? = nil
+    ) async throws -> [ResolvedTarget] {
         let installations = try await discovery.discoverInstallations()
+        let loaded = try? loader.load(startingAt: workingDirectory, stopAt: stopAt)
 
         if let explicitTarget {
             let targetURL = URL(fileURLWithPath: explicitTarget, relativeTo: workingDirectory)
-            let spec = try resolveVersionSpec(for: targetURL)
-            let installation = try VersionMatcher.resolve(spec: spec, installations: installations).get()
+            let installation = try resolveInstallation(
+                for: targetURL,
+                override: override,
+                loaded: loaded,
+                installations: installations
+            )
             return [ResolvedTarget(path: targetURL, installation: installation)]
         }
 
@@ -56,14 +79,47 @@ public struct CandidateDiscovery: Sendable {
         guard !candidatePaths.isEmpty else { throw Error.noCandidates }
 
         return try candidatePaths.map { path in
-            let spec = try resolveVersionSpec(for: path)
-            let installation = try VersionMatcher.resolve(spec: spec, installations: installations).get()
+            let installation = try resolveInstallation(
+                for: path,
+                override: override,
+                loaded: loaded,
+                installations: installations
+            )
             return ResolvedTarget(path: path, installation: installation)
         }
     }
 
-    private func resolveVersionSpec(for target: URL) throws -> VersionSpec {
-        guard let loaded = try loader.load(startingAt: workingDirectory, stopAt: stopAt) else {
+    private func resolveInstallation(
+        for target: URL,
+        override: VersionOverride?,
+        loaded: XcodeVersionsLoader.LoadedConfiguration?,
+        installations: [XcodeInstallation]
+    ) throws -> XcodeInstallation {
+        switch override {
+        case let .appPath(appPath):
+            guard let installation = installations.first(where: {
+                $0.appPath.standardizedFileURL.resolvingSymlinksInPath()
+                    == appPath.standardizedFileURL.resolvingSymlinksInPath()
+            }) else {
+                throw Error.xcodePathNotInstalled(appPath)
+            }
+            return installation
+        case let .version(version):
+            return try VersionMatcher.resolve(
+                spec: VersionSpec(rawValue: version),
+                installations: installations
+            ).get()
+        case nil:
+            let spec = try versionSpec(for: target, loaded: loaded)
+            return try VersionMatcher.resolve(spec: spec, installations: installations).get()
+        }
+    }
+
+    private func versionSpec(
+        for target: URL,
+        loaded: XcodeVersionsLoader.LoadedConfiguration?
+    ) throws -> VersionSpec {
+        guard let loaded else {
             throw XcodeVersionsLoadingError.configurationFileNotFound(startingFrom: workingDirectory)
         }
         return try resolver.resolve(

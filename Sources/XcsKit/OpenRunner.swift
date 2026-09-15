@@ -4,22 +4,11 @@ import XcsCore
 /// Resolves what to open (single candidate opens immediately; multiple
 /// candidates prompt an interactive picker on a TTY, or fail fast with no
 /// prompt when not interactive) and launches it.
+///
+/// "No candidates" and "ambiguous" are properties of candidate resolution,
+/// not of opening specifically, so both are `CandidateDiscovery.Error`
+/// cases shared with `PathRunner`/`ExecRunner` rather than duplicated here.
 public struct OpenRunner: Sendable {
-    public enum Error: Swift.Error, Equatable, Sendable, CustomStringConvertible {
-        case noCandidates
-        case ambiguousNonInteractive(candidates: [ResolvedTarget])
-
-        public var description: String {
-            switch self {
-            case .noCandidates:
-                "No target to open was found."
-            case let .ambiguousNonInteractive(candidates):
-                "Multiple targets matched and no terminal is attached to prompt for a choice: "
-                    + candidates.map(\.description).joined(separator: ", ")
-            }
-        }
-    }
-
     private let candidateDiscovery: CandidateDiscovery
     private let launcher: any XcodeLauncher
     private let interaction: any InteractionProviding
@@ -37,18 +26,21 @@ public struct OpenRunner: Sendable {
         self.isInteractive = isInteractive
     }
 
-    public func run(explicitTarget: String?) async throws -> ResolvedTarget {
-        let candidates = try await candidateDiscovery.resolveCandidates(explicitTarget: explicitTarget)
+    public func run(explicitTarget: String?, override: VersionOverride? = nil) async throws -> ResolvedTarget {
+        let candidates = try await candidateDiscovery.resolveCandidates(
+            explicitTarget: explicitTarget,
+            override: override
+        )
 
         let chosen: ResolvedTarget
         switch candidates.count {
         case 0:
-            throw Error.noCandidates
+            throw CandidateDiscovery.Error.noCandidates
         case 1:
             chosen = candidates[0] // Single candidate: never touch `interaction`.
         default:
             guard isInteractive else {
-                throw Error.ambiguousNonInteractive(candidates: candidates)
+                throw CandidateDiscovery.Error.ambiguous(candidates: candidates)
             }
             chosen = interaction.choose(
                 ChoicePrompt(

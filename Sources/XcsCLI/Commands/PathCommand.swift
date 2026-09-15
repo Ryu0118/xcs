@@ -14,6 +14,9 @@ public struct PathCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Override the pinned Xcode version for this run.")
     var xcode: String?
 
+    @Option(name: .customLong("xcode-path"), help: "Override with an explicit Xcode.app path for this run.")
+    var xcodePath: String?
+
     @Flag(name: .customLong("developer-dir"), help: "Print the Contents/Developer path instead of the .app path.")
     var developerDir = false
 
@@ -31,8 +34,10 @@ public struct PathCommand: AsyncParsableCommand {
         )
         let runner = PathRunner(candidateDiscovery: candidateDiscovery)
 
+        let override = CLIEnvironment.makeVersionOverride(xcode: xcode, xcodePath: xcodePath)
+
         do {
-            let result = try await runner.run(explicitTarget: target)
+            let result = try await runner.run(explicitTarget: target, override: override)
             let path = developerDir ? result.installation.developerDirectoryPath.path : result.installation.appPath.path
             if json {
                 CLIOutput.printJSON(ResolvedTargetJSON(result))
@@ -40,11 +45,7 @@ public struct PathCommand: AsyncParsableCommand {
                 print(path)
             }
         } catch {
-            if json {
-                CLIOutput.printJSONError(String(describing: error))
-            } else {
-                CLIOutput.printError(String(describing: error))
-            }
+            CLIOutput.reportFailure(error, json: json)
             throw ExitCode.failure
         }
     }

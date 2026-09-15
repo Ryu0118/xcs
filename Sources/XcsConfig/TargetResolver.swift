@@ -32,16 +32,17 @@ public struct TargetResolver: Sendable {
         relativeTo configDirectory: URL,
         in document: XcodeVersionsDocument
     ) -> Result<VersionSpec, ResolutionError> {
-        let relativePath = Self.relativePath(of: target, from: configDirectory)
-        let targetPath = target.standardizedFileURL.resolvingSymlinksInPath().path
+        let (relativePath, targetPath) = Self.paths(of: target, from: configDirectory)
 
         let exactMatches = document.targets.keys.filter { $0 == relativePath }
         if !exactMatches.isEmpty {
             return Self.pick(exactMatches, target: relativePath, from: document)
         }
 
+        // A key equal to `relativePath` would already have matched above and
+        // returned, so every key reaching this filter is necessarily != relativePath.
         let suffixMatches = document.targets.keys.filter { key in
-            key != relativePath && (targetPath.hasSuffix("/\(key)") || targetPath.hasSuffix(key))
+            targetPath.hasSuffix("/\(key)") || targetPath.hasSuffix(key)
         }
         if !suffixMatches.isEmpty {
             return Self.pick(suffixMatches, target: relativePath, from: document)
@@ -69,12 +70,15 @@ public struct TargetResolver: Sendable {
         return .success(VersionSpec(rawValue: version))
     }
 
-    private static func relativePath(of target: URL, from configDirectory: URL) -> String {
+    /// Returns both the config-relative path (used for exact/glob matching)
+    /// and the standardized absolute path (used for suffix matching),
+    /// computing the shared standardization/symlink-resolution step once.
+    private static func paths(of target: URL, from configDirectory: URL) -> (relativePath: String, targetPath: String) {
         let targetPath = target.standardizedFileURL.resolvingSymlinksInPath().path
         let basePath = configDirectory.standardizedFileURL.resolvingSymlinksInPath().path
-        guard targetPath.hasPrefix(basePath) else { return target.lastPathComponent }
+        guard targetPath.hasPrefix(basePath) else { return (target.lastPathComponent, targetPath) }
         var relative = String(targetPath.dropFirst(basePath.count))
         if relative.hasPrefix("/") { relative.removeFirst() }
-        return relative.isEmpty ? target.lastPathComponent : relative
+        return (relative.isEmpty ? target.lastPathComponent : relative, targetPath)
     }
 }

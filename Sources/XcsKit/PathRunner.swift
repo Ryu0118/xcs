@@ -9,11 +9,18 @@ public struct PathRunner: Sendable {
         self.candidateDiscovery = candidateDiscovery
     }
 
-    public func run(explicitTarget: String?) async throws -> ResolvedTarget {
-        let candidates = try await candidateDiscovery.resolveCandidates(explicitTarget: explicitTarget)
-        guard let single = candidates.first, candidates.count == 1 else {
-            throw OpenRunner.Error.ambiguousNonInteractive(candidates: candidates)
+    public func run(explicitTarget: String?, override: VersionOverride? = nil) async throws -> ResolvedTarget {
+        let candidates = try await candidateDiscovery.resolveCandidates(
+            explicitTarget: explicitTarget,
+            override: override
+        )
+        switch candidates.count {
+        case 0:
+            throw CandidateDiscovery.Error.noCandidates
+        case 1:
+            return candidates[0]
+        default:
+            throw CandidateDiscovery.Error.ambiguous(candidates: candidates)
         }
-        return single
     }
 }

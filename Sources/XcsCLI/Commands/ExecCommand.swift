@@ -28,7 +28,7 @@ public struct ExecCommand: AsyncParsableCommand {
         do {
             try await runner.run(target: target, command: command)
         } catch {
-            CLIOutput.printError(String(describing: error))
+            CLIOutput.reportFailure(error, json: false)
             throw ExitCode.failure
         }
     }
