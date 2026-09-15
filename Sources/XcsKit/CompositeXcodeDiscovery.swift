@@ -8,13 +8,15 @@ public struct CompositeXcodeDiscovery: XcodeDiscovery {
     private let primary: any XcodeDiscovery
     private let fallback: any XcodeDiscovery
 
+    /// Creates the composite discovery from a primary and fallback mechanism.
     public init(primary: any XcodeDiscovery, fallback: any XcodeDiscovery) {
         self.primary = primary
         self.fallback = fallback
     }
 
+    /// Discovers installations via the primary mechanism, falling back to the secondary one.
     public func discoverInstallations() async throws -> [XcodeInstallation] {
-        let primaryResult = (try? await primary.discoverInstallations()) ?? []
+        let primaryResult = await (try? primary.discoverInstallations()) ?? []
         if !primaryResult.isEmpty {
             return primaryResult
         }

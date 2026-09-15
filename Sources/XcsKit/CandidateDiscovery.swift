@@ -7,7 +7,9 @@ import XcsCore
 /// for `--xcode <version>` / `--xcode-path <path>`. Never mutates the yml or
 /// `xcode-select`.
 public enum VersionOverride: Equatable, Sendable {
+    /// Overrides resolution with an explicit version string.
     case version(String)
+    /// Overrides resolution with an explicit Xcode.app path.
     case appPath(URL)
 }
 
@@ -15,11 +17,16 @@ public enum VersionOverride: Equatable, Sendable {
 /// `.xcodeversions.yml` targets when a config exists, or `*.xcworkspace`/
 /// `*.xcodeproj` found directly in cwd otherwise.
 public struct CandidateDiscovery: Sendable {
+    /// A failure to resolve candidate targets to open.
     public enum Error: Swift.Error, Equatable, Sendable, CustomStringConvertible {
+        /// No workspace/project was found and no `.xcodeversions.yml` entries resolved.
         case noCandidates
+        /// The `--xcode-path` override does not match any discovered installation.
         case xcodePathNotInstalled(URL)
+        /// More than one candidate target matched.
         case ambiguous(candidates: [ResolvedTarget])
 
+        /// A human-readable explanation of the failure.
         public var description: String {
             switch self {
             case .noCandidates:
@@ -39,6 +46,7 @@ public struct CandidateDiscovery: Sendable {
     private let workingDirectory: URL
     private let stopAt: URL?
 
+    /// Creates the candidate discovery, wiring up its loader and resolver.
     public init(
         fileManager: any FileManagerProtocol,
         discovery: any XcodeDiscovery,
@@ -65,7 +73,7 @@ public struct CandidateDiscovery: Sendable {
         let loaded = try? loader.load(startingAt: workingDirectory, stopAt: stopAt)
 
         if let explicitTarget {
-            let targetURL = URL(fileURLWithPath: explicitTarget, relativeTo: workingDirectory)
+            let targetURL = URL(filePath: explicitTarget, relativeTo: workingDirectory)
             let installation = try resolveInstallation(
                 for: targetURL,
                 override: override,

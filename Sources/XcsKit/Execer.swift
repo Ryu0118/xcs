@@ -5,7 +5,9 @@
 #endif
 import Foundation
 
+/// Replaces the current process image with a command, having set `DEVELOPER_DIR`.
 public protocol Execer: Sendable {
+    /// Replaces the current process image with `command` after setting `DEVELOPER_DIR`.
     func exec(command: [String], developerDirectory: String) throws -> Never
 }
 
@@ -18,12 +20,17 @@ public protocol Execer: Sendable {
 /// portable form here sets the environment variable in the current process
 /// and calls `execvp`, which resolves via `PATH` and inherits `environ`.
 public struct SystemExecer: Execer {
+    /// Creates the execer.
     public init() {}
 
+    /// A failure encountered while attempting to exec a command.
     public enum Error: Swift.Error, Equatable, Sendable, CustomStringConvertible {
+        /// No command was given to exec.
         case emptyCommand
+        /// `execvp` returned, indicating failure, with the given `errno`.
         case execFailed(errno: Int32)
 
+        /// A human-readable explanation of the failure.
         public var description: String {
             switch self {
             case .emptyCommand:
@@ -34,6 +41,7 @@ public struct SystemExecer: Execer {
         }
     }
 
+    /// Sets `DEVELOPER_DIR` and replaces the current process image with `command` via `execvp`.
     public func exec(command: [String], developerDirectory: String) throws -> Never {
         guard let executableName = command.first else {
             throw Error.emptyCommand

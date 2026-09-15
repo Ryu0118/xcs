@@ -7,10 +7,12 @@ import Yams
 public struct XcodeVersionsDecoder: Sendable {
     private let fileManager: any FileManagerProtocol
 
+    /// Creates the decoder.
     public init(fileManager: any FileManagerProtocol) {
         self.fileManager = fileManager
     }
 
+    /// Reads and decodes the `.xcodeversions.yml` at `url`.
     public func decode(_ url: URL) throws -> XcodeVersionsDocument {
         let source = try readSource(from: url)
         do {

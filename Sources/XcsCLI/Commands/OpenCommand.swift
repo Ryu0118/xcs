@@ -3,7 +3,9 @@ import Foundation
 import Interaction
 import XcsKit
 
+/// Opens a workspace/project with its pinned Xcode version.
 public struct OpenCommand: AsyncParsableCommand {
+    /// Declares the command's name and abstract for `ArgumentParser`.
     public static let configuration = CommandConfiguration(
         commandName: "open",
         abstract: "Open a workspace/project with its pinned Xcode version."
@@ -21,8 +23,10 @@ public struct OpenCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Emit machine-readable JSON on stdout.")
     var json = false
 
+    /// Creates the command.
     public init() {}
 
+    /// Resolves the target and launches it with the matching Xcode installation.
     public mutating func run() async throws {
         let workingDirectory = CLIEnvironment.currentDirectory()
         let discovery = CLIEnvironment.makeDiscovery()

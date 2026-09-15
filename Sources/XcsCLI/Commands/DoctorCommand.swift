@@ -2,7 +2,9 @@ import ArgumentParser
 import Foundation
 import XcsKit
 
+/// Diagnoses `.xcodeversions.yml` discovery and Xcode installation resolvability.
 public struct DoctorCommand: AsyncParsableCommand {
+    /// Declares the command's name and abstract for `ArgumentParser`.
     public static let configuration = CommandConfiguration(
         commandName: "doctor",
         abstract: "Diagnose .xcodeversions.yml discovery and Xcode installation resolvability."
@@ -11,8 +13,10 @@ public struct DoctorCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Emit machine-readable JSON on stdout.")
     var json = false
 
+    /// Creates the command.
     public init() {}
 
+    /// Runs the diagnostic checks and prints the resulting report.
     public mutating func run() async throws {
         let workingDirectory = CLIEnvironment.currentDirectory()
         let discovery = CLIEnvironment.makeDiscovery()

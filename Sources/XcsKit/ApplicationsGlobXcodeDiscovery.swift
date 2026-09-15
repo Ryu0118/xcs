@@ -12,16 +12,18 @@ public struct ApplicationsGlobXcodeDiscovery: XcodeDiscovery {
     private let versionReader: InfoPlistVersionReader
     private let applicationsDirectory: URL
 
+    /// Creates the discovery mechanism.
     public init(
         fileManager: any FileManagerProtocol,
         versionReader: InfoPlistVersionReader = InfoPlistVersionReader(),
-        applicationsDirectory: URL = URL(fileURLWithPath: "/Applications")
+        applicationsDirectory: URL = URL(filePath: "/Applications")
     ) {
         self.fileManager = fileManager
         self.versionReader = versionReader
         self.applicationsDirectory = applicationsDirectory
     }
 
+    /// Lists `Xcode*.app` bundles directly under `applicationsDirectory`.
     public func discoverInstallations() async throws -> [XcodeInstallation] {
         let entries = (try? fileManager.contentsOfDirectory(atPath: applicationsDirectory.path)) ?? []
         let candidates = entries.filter { $0.hasPrefix("Xcode") && $0.hasSuffix(".app") }

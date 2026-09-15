@@ -1,15 +1,19 @@
 import Foundation
 
+/// Shared stdout/stderr formatting helpers used by every CLI command.
 public enum CLIOutput {
+    /// Writes an error message to stderr, prefixed with `error:`.
     public static func printError(_ message: String) {
         FileHandle.standardError.write(Data("error: \(message)\n".utf8))
     }
 
+    /// Prints an error message to stdout as a JSON object.
     public static func printJSONError(_ message: String) {
         let payload: [String: String] = ["error": message]
         printJSON(payload)
     }
 
+    /// Encodes a value as pretty-printed, sorted-key JSON and prints it to stdout.
     public static func printJSON(_ encodable: some Encodable) {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

@@ -3,19 +3,26 @@ import Foundation
 import XcsConfig
 import XcsCore
 
+/// The outcome of resolving one `.xcodeversions.yml` entry.
 public enum DoctorEntryResolution: Equatable, Sendable {
+    /// The entry resolved successfully to the given version.
     case ok(version: String)
+    /// The entry failed to resolve, with a human-readable description.
     case error(String)
 }
 
+/// The result of a full `xcs doctor` diagnostic run.
 public struct DoctorReport: Equatable, Sendable {
+    /// The path to the located `.xcodeversions.yml`, or `nil` if none was found.
     public let configurationFound: URL?
     /// `nil` when discovery itself failed — kept distinct from "discovery
     /// succeeded but found nothing" so a doctor run never silently hides
     /// that the discovery mechanism itself is broken.
     public let discoveredInstallations: [XcodeInstallation]?
+    /// The resolution outcome for each `.xcodeversions.yml` target key.
     public let entryResolutions: [String: DoctorEntryResolution]
 
+    /// Creates a report.
     public init(
         configurationFound: URL?,
         discoveredInstallations: [XcodeInstallation]?,
@@ -35,6 +42,7 @@ public struct DoctorRunner: Sendable {
     private let workingDirectory: URL
     private let stopAt: URL?
 
+    /// Creates the runner.
     public init(
         fileManager: any FileManagerProtocol,
         discovery: any XcodeDiscovery,
@@ -47,6 +55,7 @@ public struct DoctorRunner: Sendable {
         self.stopAt = stopAt
     }
 
+    /// Runs discovery and resolves every `.xcodeversions.yml` entry, producing a full report.
     public func run() async -> DoctorReport {
         let installations = try? await discovery.discoverInstallations()
         let loader = XcodeVersionsLoader(fileManager: fileManager)

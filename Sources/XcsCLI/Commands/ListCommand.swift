@@ -1,7 +1,9 @@
 import ArgumentParser
 import XcsKit
 
+/// Lists discovered Xcode installations.
 public struct ListCommand: AsyncParsableCommand {
+    /// Declares the command's name and abstract for `ArgumentParser`.
     public static let configuration = CommandConfiguration(
         commandName: "list",
         abstract: "List discovered Xcode installations."
@@ -10,8 +12,10 @@ public struct ListCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Emit machine-readable JSON on stdout.")
     var json = false
 
+    /// Creates the command.
     public init() {}
 
+    /// Discovers installed Xcode versions and prints them, marking any currently running.
     public mutating func run() async throws {
         let discovery = CLIEnvironment.makeDiscovery()
         let runner = ListRunner(discovery: discovery, runningChecker: NSWorkspaceRunningXcodeChecker())

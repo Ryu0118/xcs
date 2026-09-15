@@ -9,16 +9,20 @@ public struct XcodeVersionsLocator: Sendable {
     private let fileManager: any FileManagerProtocol
     private let fileName = ".xcodeversions.yml"
 
+    /// Creates the locator.
     public init(fileManager: any FileManagerProtocol) {
         self.fileManager = fileManager
     }
 
     /// Searches ancestors of `startingAt` for `.xcodeversions.yml`.
     ///
-    /// - Parameter stopAt: When provided, the search stops at this directory
-    ///   (inclusive) without walking further up. Tests must always pass this
-    ///   to avoid escaping a fixture root and picking up a real config file
-    ///   from the actual filesystem (e.g. the user's home directory).
+    /// - Parameters:
+    ///   - startingAt: The directory to begin searching from.
+    ///   - stopAt: When provided, the search stops at this directory
+    ///     (inclusive) without walking further up. Tests must always pass
+    ///     this to avoid escaping a fixture root and picking up a real
+    ///     config file from the actual filesystem (e.g. the user's home
+    ///     directory).
     public func locate(startingAt: URL, stopAt: URL? = nil) -> URL? {
         var current = startingAt.standardizedFileURL.resolvingSymlinksInPath()
         let stop = stopAt?.standardizedFileURL.resolvingSymlinksInPath()

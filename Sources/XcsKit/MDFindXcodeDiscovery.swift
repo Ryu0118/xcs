@@ -7,14 +7,16 @@ import XcsCore
 public struct MDFindXcodeDiscovery: XcodeDiscovery {
     private let versionReader: InfoPlistVersionReader
 
+    /// Creates the discovery mechanism.
     public init(versionReader: InfoPlistVersionReader = InfoPlistVersionReader()) {
         self.versionReader = versionReader
     }
 
+    /// Finds Xcode installations by querying Spotlight for the Xcode bundle identifier.
     public func discoverInstallations() async throws -> [XcodeInstallation] {
         let paths = try runMDFind()
         return paths.compactMap { path in
-            let url = URL(fileURLWithPath: path)
+            let url = URL(filePath: path)
             guard let version = try? versionReader.shortVersion(ofAppAt: url) else { return nil }
             return XcodeInstallation(appPath: url, shortVersion: version)
         }
@@ -22,7 +24,7 @@ public struct MDFindXcodeDiscovery: XcodeDiscovery {
 
     private func runMDFind() throws -> [String] {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/mdfind")
+        process.executableURL = URL(filePath: "/usr/bin/mdfind")
         process.arguments = ["kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'"]
 
         let outputPipe = Pipe()

@@ -5,10 +5,12 @@ import XcsCore
 public struct PathRunner: Sendable {
     private let candidateDiscovery: CandidateDiscovery
 
+    /// Creates the runner.
     public init(candidateDiscovery: CandidateDiscovery) {
         self.candidateDiscovery = candidateDiscovery
     }
 
+    /// Resolves the target to a single `ResolvedTarget`, failing if none or more than one match.
     public func run(explicitTarget: String?, override: VersionOverride? = nil) async throws -> ResolvedTarget {
         let candidates = try await candidateDiscovery.resolveCandidates(
             explicitTarget: explicitTarget,

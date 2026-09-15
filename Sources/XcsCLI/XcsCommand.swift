@@ -1,6 +1,8 @@
 import ArgumentParser
 
+/// The root `xcs` command, dispatching to its subcommands.
 public struct XcsCommand: AsyncParsableCommand {
+    /// Declares the command's name, subcommands, and default subcommand for `ArgumentParser`.
     public static let configuration = CommandConfiguration(
         commandName: "xcs",
         abstract: "Version-aware Xcode launcher and build tool selector.",
@@ -16,5 +18,6 @@ public struct XcsCommand: AsyncParsableCommand {
         defaultSubcommand: OpenCommand.self
     )
 
+    /// Creates the command.
     public init() {}
 }

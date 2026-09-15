@@ -14,6 +14,7 @@ public struct OpenRunner: Sendable {
     private let interaction: any InteractionProviding
     private let isInteractive: Bool
 
+    /// Creates the runner.
     public init(
         candidateDiscovery: CandidateDiscovery,
         launcher: any XcodeLauncher,
@@ -26,6 +27,7 @@ public struct OpenRunner: Sendable {
         self.isInteractive = isInteractive
     }
 
+    /// Resolves the target (prompting when ambiguous and interactive) and launches it.
     public func run(explicitTarget: String?, override: VersionOverride? = nil) async throws -> ResolvedTarget {
         let candidates = try await candidateDiscovery.resolveCandidates(
             explicitTarget: explicitTarget,

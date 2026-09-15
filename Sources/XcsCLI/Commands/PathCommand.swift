@@ -2,7 +2,9 @@ import ArgumentParser
 import Foundation
 import XcsKit
 
+/// Prints the resolved Xcode.app path for a target.
 public struct PathCommand: AsyncParsableCommand {
+    /// Declares the command's name and abstract for `ArgumentParser`.
     public static let configuration = CommandConfiguration(
         commandName: "path",
         abstract: "Print the resolved Xcode.app path for a target."
@@ -23,8 +25,10 @@ public struct PathCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Emit machine-readable JSON on stdout.")
     var json = false
 
+    /// Creates the command.
     public init() {}
 
+    /// Resolves the target and prints its Xcode installation path.
     public mutating func run() async throws {
         let workingDirectory = CLIEnvironment.currentDirectory()
         let discovery = CLIEnvironment.makeDiscovery()

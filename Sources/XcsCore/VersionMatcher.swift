@@ -1,8 +1,13 @@
+/// Resolves a `VersionSpec` against a list of installed Xcode versions.
 public enum VersionMatcher {
+    /// A failure to resolve a version spec to a single installation.
     public enum MatchError: Error, Equatable, Sendable, CustomStringConvertible {
+        /// No installed version matched `spec`.
         case noMatch(spec: String, available: [String])
+        /// More than one installed version matched `spec`.
         case ambiguous(spec: String, candidates: [String])
 
+        /// A human-readable explanation of the failure.
         public var description: String {
             switch self {
             case let .noMatch(spec, available):

@@ -3,12 +3,17 @@ import Foundation
 /// Reads `CFBundleShortVersionString` from an app bundle's `Info.plist`
 /// in-process, without shelling out to `defaults`.
 public struct InfoPlistVersionReader: Sendable {
+    /// Creates the reader.
     public init() {}
 
+    /// A failure encountered while reading an app bundle's version.
     public enum Error: Swift.Error, Equatable, Sendable, CustomStringConvertible {
+        /// `Info.plist` does not exist at the expected location.
         case infoPlistNotFound(URL)
+        /// `Info.plist` exists but lacks a `CFBundleShortVersionString` key.
         case versionKeyMissing(URL)
 
+        /// A human-readable explanation of the failure.
         public var description: String {
             switch self {
             case let .infoPlistNotFound(url):
@@ -19,6 +24,7 @@ public struct InfoPlistVersionReader: Sendable {
         }
     }
 
+    /// Reads `CFBundleShortVersionString` from the app bundle at `appPath`.
     public func shortVersion(ofAppAt appPath: URL) throws -> String {
         let infoPlistURL = appPath.appending(path: "Contents/Info.plist")
         guard let data = FileManager.default.contents(atPath: infoPlistURL.path) else {

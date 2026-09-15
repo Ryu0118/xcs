@@ -11,10 +11,14 @@ import XcsCore
 /// candidate and producing a spurious ambiguity error. Two matches at the
 /// *same* tier is an ambiguity error listing every matching key.
 public struct TargetResolver: Sendable {
+    /// A failure to resolve a target to a single `targets:` entry.
     public enum ResolutionError: Error, Equatable, Sendable, CustomStringConvertible {
+        /// The target matched more than one key at the same precedence tier.
         case ambiguousMatch(target: String, matchingKeys: [String])
+        /// The target matched no key at any precedence tier.
         case noMatch(target: String)
 
+        /// A human-readable explanation of the failure.
         public var description: String {
             switch self {
             case let .ambiguousMatch(target, matchingKeys):
@@ -25,8 +29,10 @@ public struct TargetResolver: Sendable {
         }
     }
 
+    /// Creates the resolver.
     public init() {}
 
+    /// Resolves `target` against `document`'s `targets:` map, relative to `configDirectory`.
     public func resolve(
         target: URL,
         relativeTo configDirectory: URL,
@@ -78,7 +84,9 @@ public struct TargetResolver: Sendable {
         let basePath = configDirectory.standardizedFileURL.resolvingSymlinksInPath().path
         guard targetPath.hasPrefix(basePath) else { return (target.lastPathComponent, targetPath) }
         var relative = String(targetPath.dropFirst(basePath.count))
-        if relative.hasPrefix("/") { relative.removeFirst() }
+        if relative.hasPrefix("/") {
+            relative.removeFirst()
+        }
         return (relative.isEmpty ? target.lastPathComponent : relative, targetPath)
     }
 }
