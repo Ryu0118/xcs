@@ -6,12 +6,9 @@
 [![Swift](https://img.shields.io/badge/Swift-6.2-F05138?logo=swift&logoColor=white)](https://swift.org)
 [![Platform](https://img.shields.io/badge/platform-macOS%2026%2B-lightgrey)](https://developer.apple.com/macos/)
 
-Every `Xcode.app` shares the bundle identifier `com.apple.dt.Xcode`, so once
-more than one version is installed, `xed`/`open -a` can't tell them apart —
-`xed` always opens whatever `xcode-select -p` points at, and `open -a` fails
-outright (`-10664`). xcs pins the Xcode version per workspace/project in a
-YAML file and opens or builds with exactly that version by exec'ing the app
-bundle directly, bypassing Launch Services entirely.
+xcs pins an Xcode version to each workspace/project in a YAML file, then
+opens or builds with exactly that version — reliably, even with multiple
+Xcode installations that `xed`/`open -a` can't tell apart.
 
 ## Table of Contents
 
