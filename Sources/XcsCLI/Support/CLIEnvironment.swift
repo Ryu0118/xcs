@@ -4,7 +4,7 @@ import XcsKit
 
 enum CLIEnvironment {
     static func currentDirectory(fileManager: any FileManagerProtocol = FileManager.default) -> URL {
-        URL(fileURLWithPath: fileManager.currentDirectoryPath)
+        URL(filePath: fileManager.currentDirectoryPath)
     }
 
     static func makeDiscovery() -> any XcodeDiscovery {
@@ -29,7 +29,7 @@ enum CLIEnvironment {
     /// command that resolves a target. `--xcode-path` wins if both are given.
     static func makeVersionOverride(xcode: String?, xcodePath: String?) -> VersionOverride? {
         if let xcodePath {
-            return .appPath(URL(fileURLWithPath: xcodePath))
+            return .appPath(URL(filePath: xcodePath))
         }
         if let xcode {
             return .version(xcode)

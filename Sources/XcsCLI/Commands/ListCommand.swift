@@ -25,14 +25,19 @@ public struct ListCommand: AsyncParsableCommand {
             if json {
                 CLIOutput.printJSON(results.map { ListedInstallationJSON($0) })
             } else {
-                for item in results {
-                    let marker = item.isRunning ? "[running]" : ""
-                    print("\(item.installation.shortVersion)  \(item.installation.appPath.path)  \(marker)")
-                }
+                printTable(results)
             }
         } catch {
             CLIOutput.reportFailure(error, json: json)
             throw ExitCode.failure
+        }
+    }
+
+    /// Prints one line per installation, marking any that are currently running.
+    private func printTable(_ results: [ListedInstallation]) {
+        for item in results {
+            let marker = item.isRunning ? "[running]" : ""
+            print("\(item.installation.shortVersion)  \(item.installation.appPath.path)  \(marker)")
         }
     }
 }

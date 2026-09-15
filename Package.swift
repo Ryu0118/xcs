@@ -17,7 +17,6 @@ let package = Package(
         .package(url: "https://github.com/Ryu0118/FileManagerProtocol", from: "0.1.0"),
         .package(url: "https://github.com/Ryu0118/swift-interaction", from: "0.2.0"),
         .package(url: "https://github.com/tuist/FileSystem", from: "0.13.47"),
-        .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.1.0"),
     ],
     targets: [
         .target(

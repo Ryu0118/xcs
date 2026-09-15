@@ -1,12 +1,11 @@
 import Foundation
 import Testing
-
 @testable import XcsCore
 
 struct VersionMatcherTests {
     private func installation(_ version: String) -> XcodeInstallation {
         XcodeInstallation(
-            appPath: URL(fileURLWithPath: "/Applications/Xcode_\(version).app"),
+            appPath: URL(filePath: "/Applications/Xcode_\(version).app"),
             shortVersion: version
         )
     }
