@@ -29,20 +29,39 @@ public struct OpenCommand: AsyncParsableCommand {
     /// Resolves the target and launches it with the matching Xcode installation.
     public mutating func run() async throws {
         let workingDirectory = CLIEnvironment.currentDirectory()
-        let discovery = CLIEnvironment.makeDiscovery()
-        let candidateDiscovery = CLIEnvironment.makeCandidateDiscovery(
-            workingDirectory: workingDirectory,
-            discovery: discovery
-        )
-        let isInteractive = TerminalCapabilities.detect().isInteractive
-
-        let runner = OpenRunner(
-            candidateDiscovery: candidateDiscovery,
+        try await Self.execute(
+            target: target,
+            xcode: xcode,
+            xcodePath: xcodePath,
+            json: json,
+            candidateDiscovery: CLIEnvironment.makeCandidateDiscovery(
+                workingDirectory: workingDirectory,
+                discovery: CLIEnvironment.makeDiscovery()
+            ),
             launcher: DirectExecXcodeLauncher(),
             interaction: Terminal(),
+            isInteractive: TerminalCapabilities.detect().isInteractive
+        )
+    }
+
+    /// Runs `OpenRunner` against injected dependencies and reports the result. Split out from
+    /// `run()` so tests can inject fakes without going through `ArgumentParser`.
+    static func execute(
+        target: String?,
+        xcode: String?,
+        xcodePath: String?,
+        json: Bool,
+        candidateDiscovery: CandidateDiscovery,
+        launcher: any XcodeLauncher,
+        interaction: any InteractionProviding,
+        isInteractive: Bool
+    ) async throws {
+        let runner = OpenRunner(
+            candidateDiscovery: candidateDiscovery,
+            launcher: launcher,
+            interaction: interaction,
             isInteractive: isInteractive
         )
-
         let override = CLIEnvironment.makeVersionOverride(xcode: xcode, xcodePath: xcodePath)
 
         do {

@@ -19,13 +19,20 @@ public struct DoctorCommand: AsyncParsableCommand {
     /// Runs the diagnostic checks and prints the resulting report.
     public mutating func run() async throws {
         let workingDirectory = CLIEnvironment.currentDirectory()
-        let discovery = CLIEnvironment.makeDiscovery()
-        let runner = DoctorRunner(
-            fileManager: FileManager.default,
-            discovery: discovery,
-            workingDirectory: workingDirectory
+        await Self.execute(
+            json: json,
+            workingDirectory: workingDirectory,
+            runner: DoctorRunner(
+                fileManager: FileManager.default,
+                discovery: CLIEnvironment.makeDiscovery(),
+                workingDirectory: workingDirectory
+            )
         )
+    }
 
+    /// Runs `DoctorRunner` and prints its report. Split out from `run()` so
+    /// tests can inject a fake-backed runner without going through `ArgumentParser`.
+    static func execute(json: Bool, workingDirectory: URL, runner: DoctorRunner) async {
         let report = await runner.run()
 
         if json {

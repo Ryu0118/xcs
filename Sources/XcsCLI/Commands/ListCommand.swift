@@ -17,8 +17,21 @@ public struct ListCommand: AsyncParsableCommand {
 
     /// Discovers installed Xcode versions and prints them, marking any currently running.
     public mutating func run() async throws {
-        let discovery = CLIEnvironment.makeDiscovery()
-        let runner = ListRunner(discovery: discovery, runningChecker: NSWorkspaceRunningXcodeChecker())
+        try await Self.execute(
+            json: json,
+            discovery: CLIEnvironment.makeDiscovery(),
+            runningChecker: NSWorkspaceRunningXcodeChecker()
+        )
+    }
+
+    /// Runs `ListRunner` against injected dependencies and reports the result. Split out from
+    /// `run()` so tests can inject fakes without going through `ArgumentParser`.
+    static func execute(
+        json: Bool,
+        discovery: any XcodeDiscovery,
+        runningChecker: any RunningXcodeChecker
+    ) async throws {
+        let runner = ListRunner(discovery: discovery, runningChecker: runningChecker)
 
         do {
             let results = try await runner.run()
@@ -34,7 +47,7 @@ public struct ListCommand: AsyncParsableCommand {
     }
 
     /// Prints one line per installation, marking any that are currently running.
-    private func printTable(_ results: [ListedInstallation]) {
+    private static func printTable(_ results: [ListedInstallation]) {
         for item in results {
             let marker = item.isRunning ? "[running]" : ""
             print("\(item.installation.shortVersion)  \(item.installation.appPath.path)  \(marker)")

@@ -31,13 +31,30 @@ public struct PathCommand: AsyncParsableCommand {
     /// Resolves the target and prints its Xcode installation path.
     public mutating func run() async throws {
         let workingDirectory = CLIEnvironment.currentDirectory()
-        let discovery = CLIEnvironment.makeDiscovery()
-        let candidateDiscovery = CLIEnvironment.makeCandidateDiscovery(
-            workingDirectory: workingDirectory,
-            discovery: discovery
+        try await Self.execute(
+            target: target,
+            xcode: xcode,
+            xcodePath: xcodePath,
+            developerDir: developerDir,
+            json: json,
+            candidateDiscovery: CLIEnvironment.makeCandidateDiscovery(
+                workingDirectory: workingDirectory,
+                discovery: CLIEnvironment.makeDiscovery()
+            )
         )
-        let runner = PathRunner(candidateDiscovery: candidateDiscovery)
+    }
 
+    /// Runs `PathRunner` against an injected `CandidateDiscovery` and reports the result. Split
+    /// out from `run()` so tests can inject fakes without going through `ArgumentParser`.
+    static func execute(
+        target: String?,
+        xcode: String?,
+        xcodePath: String?,
+        developerDir: Bool,
+        json: Bool,
+        candidateDiscovery: CandidateDiscovery
+    ) async throws {
+        let runner = PathRunner(candidateDiscovery: candidateDiscovery)
         let override = CLIEnvironment.makeVersionOverride(xcode: xcode, xcodePath: xcodePath)
 
         do {

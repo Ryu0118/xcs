@@ -22,12 +22,26 @@ public struct ExecCommand: AsyncParsableCommand {
     /// Resolves the target's Xcode installation and execs the given command under it.
     public mutating func run() async throws {
         let workingDirectory = CLIEnvironment.currentDirectory()
-        let discovery = CLIEnvironment.makeDiscovery()
-        let candidateDiscovery = CLIEnvironment.makeCandidateDiscovery(
-            workingDirectory: workingDirectory,
-            discovery: discovery
+        try await Self.execute(
+            target: target,
+            command: command,
+            candidateDiscovery: CLIEnvironment.makeCandidateDiscovery(
+                workingDirectory: workingDirectory,
+                discovery: CLIEnvironment.makeDiscovery()
+            ),
+            execer: SystemExecer()
         )
-        let runner = ExecRunner(candidateDiscovery: candidateDiscovery, execer: SystemExecer())
+    }
+
+    /// Runs `ExecRunner` against injected dependencies. Split out from `run()`
+    /// so tests can inject fakes without going through `ArgumentParser`.
+    static func execute(
+        target: String,
+        command: [String],
+        candidateDiscovery: CandidateDiscovery,
+        execer: any Execer
+    ) async throws {
+        let runner = ExecRunner(candidateDiscovery: candidateDiscovery, execer: execer)
 
         do {
             try await runner.run(target: target, command: command)
