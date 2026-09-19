@@ -41,6 +41,15 @@ public struct ExecCommand: AsyncParsableCommand {
         candidateDiscovery: CandidateDiscovery,
         execer: any Execer
     ) async throws {
+        // `.captureForPassthrough` captures a literal leading "--" per
+        // ArgumentParser's documented behavior, but `xcs exec <target> --
+        // <command>` is the natural way to write this command — dropping a
+        // single leading "--" here avoids silently execvp'ing "--" itself.
+        var command = command
+        if command.first == "--" {
+            command.removeFirst()
+        }
+
         let runner = ExecRunner(candidateDiscovery: candidateDiscovery, execer: execer)
 
         do {

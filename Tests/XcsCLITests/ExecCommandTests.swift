@@ -55,4 +55,40 @@ struct ExecCommandTests {
         #expect(parsed.target == "App.xcworkspace")
         #expect(parsed.command == ["xcodebuild", "-scheme", "Foo", "-configuration", "Debug"])
     }
+
+    @Test
+    func dropsALeadingDoubleDashBeforeExeccing() async throws {
+        // `.captureForPassthrough` captures a literal leading "--" (documented
+        // ArgumentParser behavior), but `xcs exec <target> -- <command>` is
+        // the natural way to write this — execute() must drop it rather than
+        // handing "--" to execvp as the program name.
+        try await ConfigurationTestSupport.withDirectory { root in
+            try ConfigurationTestSupport.write(
+                "targets:\n  App.xcworkspace: \"27.0\"\n",
+                to: root.appending(path: ".xcodeversions.yml")
+            )
+            try FileManager.default.createDirectory(
+                at: root.appending(path: "App.xcworkspace"), withIntermediateDirectories: true
+            )
+
+            let execer = FakeExecer()
+            let candidateDiscovery = CandidateDiscovery(
+                fileManager: FileManager.default,
+                discovery: FakeXcodeDiscovery.returning([installation("27.0")]),
+                workingDirectory: root,
+                stopAt: root
+            )
+
+            await #expect(throws: ExitCode.failure) {
+                try await ExecCommand.execute(
+                    target: "App.xcworkspace",
+                    command: ["--", "xcodebuild", "-version"],
+                    candidateDiscovery: candidateDiscovery,
+                    execer: execer
+                )
+            }
+
+            #expect(execer.lastCommand == ["xcodebuild", "-version"])
+        }
+    }
 }
