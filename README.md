@@ -1,4 +1,4 @@
-# 🧭 xcs
+# ⚒️ xcs
 
 **A version-aware Xcode launcher and build tool selector.**
 
