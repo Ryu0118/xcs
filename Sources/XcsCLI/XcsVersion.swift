@@ -1,3 +1,3 @@
 enum XcsVersion {
-    static let current = "0.1.0"
+    static let current = "0.1.1"
 }
