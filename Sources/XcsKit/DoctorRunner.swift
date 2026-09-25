@@ -41,23 +41,35 @@ public struct DoctorRunner: Sendable {
     private let discovery: any XcodeDiscovery
     private let workingDirectory: URL
     private let stopAt: URL?
+    private let excludeBeta: Bool
 
     /// Creates the runner.
+    ///
+    /// - Parameter excludeBeta: When `true`, entry resolution ignores installations
+    ///   whose `licenseType` is `.beta`, matching what `xcs path`/`open`/`exec
+    ///   --exclude-beta` would actually resolve to. `discoveredInstallations` in the
+    ///   report always lists the unfiltered inventory — doctor's job is to show what's
+    ///   really on disk, not to hide beta seeds from that listing.
     public init(
         fileManager: any FileManagerProtocol,
         discovery: any XcodeDiscovery,
         workingDirectory: URL,
-        stopAt: URL? = nil
+        stopAt: URL? = nil,
+        excludeBeta: Bool = false
     ) {
         self.fileManager = fileManager
         self.discovery = discovery
         self.workingDirectory = workingDirectory
         self.stopAt = stopAt
+        self.excludeBeta = excludeBeta
     }
 
     /// Runs discovery and resolves every `.xcodeversions.yml` entry, producing a full report.
     public func run() async -> DoctorReport {
         let installations = try? await discovery.discoverInstallations()
+        let resolvableInstallations = excludeBeta
+            ? installations?.filter { $0.licenseType != .beta }
+            : installations
         let loader = XcodeVersionsLoader(fileManager: fileManager)
         let resolver = TargetResolver()
 
@@ -74,7 +86,7 @@ public struct DoctorRunner: Sendable {
                     relativeTo: loaded.configurationDirectory,
                     in: loaded.document
                 ).get()
-                _ = try VersionMatcher.resolve(spec: spec, installations: installations ?? []).get()
+                _ = try VersionMatcher.resolve(spec: spec, installations: resolvableInstallations ?? []).get()
                 resolutions[key] = .ok(version: versionString)
             } catch {
                 resolutions[key] = .error(String(describing: error))

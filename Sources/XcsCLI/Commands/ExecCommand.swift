@@ -16,6 +16,9 @@ public struct ExecCommand: AsyncParsableCommand {
     @Argument(parsing: .captureForPassthrough, help: "Command to run, e.g. xcodebuild -scheme Foo.")
     var command: [String] = []
 
+    @Flag(name: .customLong("exclude-beta"), help: "Ignore beta/seed Xcode installations when resolving.")
+    var excludeBeta = false
+
     /// Creates the command.
     public init() {}
 
@@ -27,7 +30,8 @@ public struct ExecCommand: AsyncParsableCommand {
             command: command,
             candidateDiscovery: CLIEnvironment.makeCandidateDiscovery(
                 workingDirectory: workingDirectory,
-                discovery: CLIEnvironment.makeDiscovery()
+                discovery: CLIEnvironment.makeDiscovery(),
+                excludeBeta: excludeBeta
             ),
             execer: SystemExecer()
         )

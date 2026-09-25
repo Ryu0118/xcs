@@ -16,12 +16,14 @@ enum CLIEnvironment {
 
     static func makeCandidateDiscovery(
         workingDirectory: URL,
-        discovery: any XcodeDiscovery
+        discovery: any XcodeDiscovery,
+        excludeBeta: Bool = false
     ) -> CandidateDiscovery {
         CandidateDiscovery(
             fileManager: FileManager.default,
             discovery: discovery,
-            workingDirectory: workingDirectory
+            workingDirectory: workingDirectory,
+            excludeBeta: excludeBeta
         )
     }
 

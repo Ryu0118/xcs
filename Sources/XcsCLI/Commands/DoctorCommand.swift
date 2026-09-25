@@ -13,6 +13,9 @@ public struct DoctorCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Emit machine-readable JSON on stdout.")
     var json = false
 
+    @Flag(name: .customLong("exclude-beta"), help: "Diagnose entry resolution as if beta/seed Xcode installations were absent.")
+    var excludeBeta = false
+
     /// Creates the command.
     public init() {}
 
@@ -25,7 +28,8 @@ public struct DoctorCommand: AsyncParsableCommand {
             runner: DoctorRunner(
                 fileManager: FileManager.default,
                 discovery: CLIEnvironment.makeDiscovery(),
-                workingDirectory: workingDirectory
+                workingDirectory: workingDirectory,
+                excludeBeta: excludeBeta
             )
         )
     }
@@ -52,7 +56,7 @@ public struct DoctorCommand: AsyncParsableCommand {
         case let .some(installations) where installations.isEmpty:
             print("⚠️  installations: none discovered")
         case let .some(installations):
-            print("✅ installations: \(installations.map(\.shortVersion).joined(separator: ", "))")
+            print("✅ installations: \(installations.map(\.description).joined(separator: ", "))")
         }
 
         for (key, result) in report.entryResolutions.sorted(by: { $0.key < $1.key }) {

@@ -57,6 +57,23 @@ struct ExecCommandTests {
     }
 
     @Test
+    func excludeBetaMustPrecedeTargetToBeRecognizedAsAFlag() throws {
+        // `.captureForPassthrough` on `command` captures everything from
+        // <target> onward, including any later-positioned flags — so
+        // `--exclude-beta` only parses as a flag when given *before* <target>.
+        let before = try ExecCommand.parse(["--exclude-beta", "App.xcworkspace", "xcodebuild", "-version"])
+        #expect(before.excludeBeta == true)
+        #expect(before.command == ["xcodebuild", "-version"])
+
+        // After <target>, it's swallowed into the passthrough command instead
+        // of being parsed as the flag — this is the documented tradeoff, not
+        // a bug to silently fix, so pin the behavior here.
+        let after = try ExecCommand.parse(["App.xcworkspace", "--exclude-beta", "xcodebuild", "-version"])
+        #expect(after.excludeBeta == false)
+        #expect(after.command == ["--exclude-beta", "xcodebuild", "-version"])
+    }
+
+    @Test
     func dropsALeadingDoubleDashBeforeExeccing() async throws {
         // `.captureForPassthrough` captures a literal leading "--" (documented
         // ArgumentParser behavior), but `xcs exec <target> -- <command>` is
