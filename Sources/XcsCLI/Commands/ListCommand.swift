@@ -46,11 +46,15 @@ public struct ListCommand: AsyncParsableCommand {
         }
     }
 
-    /// Prints one line per installation, marking any that are currently running.
+    /// Prints one line per installation, marking any that are currently running
+    /// and, when known, whether it's a GM or Beta build — two installations can
+    /// report the identical `shortVersion` (e.g. both "27.0") while differing only
+    /// in license type, so this is the only way to tell them apart at a glance.
     private static func printTable(_ results: [ListedInstallation]) {
         for item in results {
             let marker = item.isRunning ? "[running]" : ""
-            print("\(item.installation.shortVersion)  \(item.installation.appPath.path)  \(marker)")
+            let license = item.installation.licenseType.map { "[\($0.rawValue)]" } ?? ""
+            print("\(item.installation.shortVersion)  \(item.installation.appPath.path)  \(license)  \(marker)")
         }
     }
 }

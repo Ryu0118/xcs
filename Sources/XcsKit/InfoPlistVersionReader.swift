@@ -1,7 +1,9 @@
 import Foundation
+import XcsCore
 
-/// Reads `CFBundleShortVersionString` from an app bundle's `Info.plist`
-/// in-process, without shelling out to `defaults`.
+/// Reads `CFBundleShortVersionString` from an app bundle's `Info.plist`,
+/// and `licenseType` from its `LicenseInfo.plist`, in-process, without
+/// shelling out to `defaults`.
 public struct InfoPlistVersionReader: Sendable {
     /// Creates the reader.
     public init() {}
@@ -41,5 +43,26 @@ public struct InfoPlistVersionReader: Sendable {
             throw Error.versionKeyMissing(infoPlistURL)
         }
         return version
+    }
+
+    /// Reads `licenseType` from `Contents/Resources/LicenseInfo.plist` at `appPath`.
+    /// Returns `nil` when the file is missing, unreadable, or its value doesn't match
+    /// a known `LicenseType` — this is best-effort metadata, never required for resolution.
+    public func licenseType(ofAppAt appPath: URL) -> XcodeInstallation.LicenseType? {
+        let licenseInfoURL = appPath.appending(path: "Contents/Resources/LicenseInfo.plist")
+        guard let data = FileManager.default.contents(atPath: licenseInfoURL.path) else {
+            return nil
+        }
+        guard
+            let plist = try? PropertyListSerialization.propertyList(
+                from: data,
+                options: [],
+                format: nil
+            ) as? [String: Any],
+            let rawLicenseType = plist["licenseType"] as? String
+        else {
+            return nil
+        }
+        return XcodeInstallation.LicenseType(rawValue: rawLicenseType)
     }
 }

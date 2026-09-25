@@ -19,11 +19,14 @@ struct ListedInstallationJSON: Encodable {
     let appPath: String
     let version: String
     let running: Bool
+    /// `"GM"` / `"Beta"` / `nil` when `LicenseInfo.plist` is missing or unrecognized.
+    let licenseType: String?
 
     init(_ listed: ListedInstallation) {
         appPath = listed.installation.appPath.path
         version = listed.installation.shortVersion
         running = listed.isRunning
+        licenseType = listed.installation.licenseType?.rawValue
     }
 }
 
@@ -56,7 +59,7 @@ struct DoctorReportJSON: Encodable {
 
     init(_ report: DoctorReport) {
         configurationFound = report.configurationFound?.path
-        discoveredInstallations = report.discoveredInstallations?.map(\.shortVersion)
+        discoveredInstallations = report.discoveredInstallations?.map(\.description)
         entryResolutions = report.entryResolutions.mapValues(DoctorEntryResolutionJSON.init)
     }
 }

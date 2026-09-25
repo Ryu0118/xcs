@@ -31,7 +31,8 @@ public struct ApplicationsGlobXcodeDiscovery: XcodeDiscovery {
         return candidates.compactMap { name in
             let url = applicationsDirectory.appending(path: name)
             guard let version = try? versionReader.shortVersion(ofAppAt: url) else { return nil }
-            return XcodeInstallation(appPath: url, shortVersion: version)
+            let licenseType = versionReader.licenseType(ofAppAt: url)
+            return XcodeInstallation(appPath: url, shortVersion: version, licenseType: licenseType)
         }
     }
 }
