@@ -23,6 +23,9 @@ public struct OpenCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Emit machine-readable JSON on stdout.")
     var json = false
 
+    @Flag(name: .customLong("exclude-beta"), help: "Ignore beta/seed Xcode installations when resolving.")
+    var excludeBeta = false
+
     /// Creates the command.
     public init() {}
 
@@ -36,7 +39,8 @@ public struct OpenCommand: AsyncParsableCommand {
             json: json,
             candidateDiscovery: CLIEnvironment.makeCandidateDiscovery(
                 workingDirectory: workingDirectory,
-                discovery: CLIEnvironment.makeDiscovery()
+                discovery: CLIEnvironment.makeDiscovery(),
+                excludeBeta: excludeBeta
             ),
             launcher: DirectExecXcodeLauncher(),
             interaction: Terminal(),

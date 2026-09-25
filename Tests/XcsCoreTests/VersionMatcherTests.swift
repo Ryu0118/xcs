@@ -3,10 +3,14 @@ import Testing
 @testable import XcsCore
 
 struct VersionMatcherTests {
-    private func installation(_ version: String) -> XcodeInstallation {
+    private func installation(
+        _ version: String,
+        licenseType: XcodeInstallation.LicenseType? = nil
+    ) -> XcodeInstallation {
         XcodeInstallation(
             appPath: URL(filePath: "/Applications/Xcode_\(version).app"),
-            shortVersion: version
+            shortVersion: version,
+            licenseType: licenseType
         )
     }
 
@@ -39,7 +43,67 @@ struct VersionMatcherTests {
         )
         #expect(
             result == .failure(
-                .ambiguous(spec: "27", candidates: ["27.0", "27.1"])
+                .ambiguous(
+                    spec: "27",
+                    candidates: [
+                        "27.0 (/Applications/Xcode_27.0.app)",
+                        "27.1 (/Applications/Xcode_27.1.app)",
+                    ]
+                )
+            )
+        )
+    }
+
+    @Test
+    func ambiguousCandidatesIncludeLicenseTypeWhenAvailable() {
+        let installations = [
+            installation("27.0", licenseType: .gm),
+            installation("27.1", licenseType: .beta),
+        ]
+        let result = VersionMatcher.resolve(
+            spec: VersionSpec(rawValue: "27"),
+            installations: installations
+        )
+        #expect(
+            result == .failure(
+                .ambiguous(
+                    spec: "27",
+                    candidates: [
+                        "27.0 (/Applications/Xcode_27.0.app) [GM]",
+                        "27.1 (/Applications/Xcode_27.1.app) [Beta]",
+                    ]
+                )
+            )
+        )
+    }
+
+    @Test
+    func ambiguousCandidatesShareIdenticalShortVersionButDifferentPaths() {
+        // Regression: a beta seed and a GM build reporting the same shortVersion
+        // ("27.0") used to render as an unactionable "27.0, 27.0" candidate list.
+        let gm = XcodeInstallation(
+            appPath: URL(filePath: "/Applications/Xcode_27.app"),
+            shortVersion: "27.0",
+            licenseType: .gm
+        )
+        let beta = XcodeInstallation(
+            appPath: URL(filePath: "/Applications/Xcode-27.0.0-Beta.app"),
+            shortVersion: "27.0",
+            licenseType: .beta
+        )
+        let result = VersionMatcher.resolve(
+            spec: VersionSpec(rawValue: "27"),
+            installations: [gm, beta]
+        )
+        #expect(
+            result == .failure(
+                .ambiguous(
+                    spec: "27",
+                    candidates: [
+                        "27.0 (/Applications/Xcode_27.app) [GM]",
+                        "27.0 (/Applications/Xcode-27.0.0-Beta.app) [Beta]",
+                    ]
+                )
             )
         )
     }
@@ -53,7 +117,13 @@ struct VersionMatcherTests {
         )
         #expect(
             result == .failure(
-                .noMatch(spec: "28", available: ["26.6", "27.0"])
+                .noMatch(
+                    spec: "28",
+                    available: [
+                        "26.6 (/Applications/Xcode_26.6.app)",
+                        "27.0 (/Applications/Xcode_27.0.app)",
+                    ]
+                )
             )
         )
     }

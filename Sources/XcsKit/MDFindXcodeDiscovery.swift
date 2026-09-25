@@ -18,7 +18,8 @@ public struct MDFindXcodeDiscovery: XcodeDiscovery {
         return paths.compactMap { path in
             let url = URL(filePath: path)
             guard let version = try? versionReader.shortVersion(ofAppAt: url) else { return nil }
-            return XcodeInstallation(appPath: url, shortVersion: version)
+            let licenseType = versionReader.licenseType(ofAppAt: url)
+            return XcodeInstallation(appPath: url, shortVersion: version, licenseType: licenseType)
         }
     }
 

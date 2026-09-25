@@ -41,12 +41,19 @@ public enum VersionMatcher {
 
         switch prefixMatches.count {
         case 0:
-            let available = installations.map(\.shortVersion)
+            // Same rendering as `.ambiguous`: several installed versions can
+            // share an identical shortVersion string, so listing bare
+            // shortVersions here would repeat the same unactionable output.
+            let available = installations.map(\.description)
             return .failure(.noMatch(spec: spec.rawValue, available: available))
         case 1:
             return .success(prefixMatches[0])
         default:
-            let candidates = prefixMatches.map(\.shortVersion)
+            // Candidates are formatted with path + licenseType, not just shortVersion —
+            // a beta seed and a GM build can report the identical shortVersion string
+            // (e.g. both "27.0"), which used to render as an unactionable
+            // "27.0, 27.0, 27.0" with no way to tell them apart.
+            let candidates = prefixMatches.map(\.description)
             return .failure(.ambiguous(spec: spec.rawValue, candidates: candidates))
         }
     }

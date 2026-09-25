@@ -83,15 +83,24 @@ targets:
 | Command | Purpose |
 | --- | --- |
 | `xcs [<target>]` | Shorthand for `xcs open`. |
-| `xcs open [<target>] [--xcode <version>] [--xcode-path <path>] [--json]` | Opens the resolved target with the resolved Xcode version. Multiple candidates prompt an interactive picker on a terminal, or fail fast with no prompt otherwise. |
-| `xcs path [<target>] [--xcode <version>] [--xcode-path <path>] [--developer-dir] [--json]` | Prints the resolved `Xcode.app` path, or its `Contents/Developer` path with `--developer-dir`. |
-| `xcs exec <target> -- <command...>` | Runs a command with `DEVELOPER_DIR` set to the resolved installation. |
-| `xcs list [--json]` | Lists every discovered Xcode installation and whether it's running. |
+| `xcs open [<target>] [--xcode <version>] [--xcode-path <path>] [--exclude-beta] [--json]` | Opens the resolved target with the resolved Xcode version. Multiple candidates prompt an interactive picker on a terminal, or fail fast with no prompt otherwise. |
+| `xcs path [<target>] [--xcode <version>] [--xcode-path <path>] [--exclude-beta] [--developer-dir] [--json]` | Prints the resolved `Xcode.app` path, or its `Contents/Developer` path with `--developer-dir`. |
+| `xcs exec [--exclude-beta] <target> -- <command...>` | Runs a command with `DEVELOPER_DIR` set to the resolved installation. `--exclude-beta` must come before `<target>` — everything from `<target>` onward, including any later flags, is captured as passthrough for `<command...>`. |
+| `xcs list [--json]` | Lists every discovered Xcode installation, whether it's running, and its `licenseType` (`GM`/`Beta`) when known. |
 | `xcs doctor [--json]` | Diagnoses `.xcodeversions.yml` discovery and entry resolvability. |
 
 `--xcode`/`--xcode-path` bypass `.xcodeversions.yml` for a single run without
 mutating it or `xcode-select`. Every command supports `--json` and never
 falls back to an interactive prompt when stdin/stdout isn't a terminal.
+
+A beta seed and a GM build can report the identical `CFBundleShortVersionString`
+(e.g. both `"27.0"`), so a bare version spec like `"27"` can become ambiguous
+once a beta seed and its GM ship under the same marketing version. `--exclude-beta`
+drops installations whose `Contents/Resources/LicenseInfo.plist` reports
+`licenseType: Beta` before resolution runs — it doesn't guess which candidate to
+prefer, it only shrinks the candidate set on request. Installations with no
+readable `LicenseInfo.plist` are kept either way, since unknown isn't the same
+as "not beta."
 
 ## License
 

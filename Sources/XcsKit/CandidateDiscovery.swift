@@ -45,13 +45,22 @@ public struct CandidateDiscovery: Sendable {
     private let discovery: any XcodeDiscovery
     private let workingDirectory: URL
     private let stopAt: URL?
+    private let excludeBeta: Bool
 
     /// Creates the candidate discovery, wiring up its loader and resolver.
+    ///
+    /// - Parameter excludeBeta: When `true`, installations whose `licenseType` is
+    ///   `.beta` are dropped before resolution runs. Installations with an unknown
+    ///   `licenseType` (`nil` — e.g. the file is missing) are kept, since `nil` means
+    ///   "unknown," not "not beta." This never guesses which candidate to prefer; it
+    ///   only shrinks the candidate set explicitly, on request — see `VersionMatcher`'s
+    ///   "never guess" resolution semantics.
     public init(
         fileManager: any FileManagerProtocol,
         discovery: any XcodeDiscovery,
         workingDirectory: URL,
-        stopAt: URL? = nil
+        stopAt: URL? = nil,
+        excludeBeta: Bool = false
     ) {
         self.fileManager = fileManager
         loader = XcodeVersionsLoader(fileManager: fileManager)
@@ -59,6 +68,7 @@ public struct CandidateDiscovery: Sendable {
         self.discovery = discovery
         self.workingDirectory = workingDirectory
         self.stopAt = stopAt
+        self.excludeBeta = excludeBeta
     }
 
     /// Resolves candidates. When `explicitTarget` is given, the result is
@@ -69,7 +79,10 @@ public struct CandidateDiscovery: Sendable {
         explicitTarget: String?,
         override: VersionOverride? = nil
     ) async throws -> [ResolvedTarget] {
-        let installations = try await discovery.discoverInstallations()
+        let discovered = try await discovery.discoverInstallations()
+        let installations = excludeBeta
+            ? discovered.filter { $0.licenseType != .beta }
+            : discovered
         let loaded = try? loader.load(startingAt: workingDirectory, stopAt: stopAt)
 
         if let explicitTarget {
