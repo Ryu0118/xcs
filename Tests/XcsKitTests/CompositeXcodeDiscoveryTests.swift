@@ -102,6 +102,32 @@ struct CompositeXcodeDiscoveryTests {
     }
 
     @Test
+    func keepsEarlierResultsWhenALaterMechanismThrows() async throws {
+        struct SomeError: Error {}
+        let composite = CompositeXcodeDiscovery([
+            FakeXcodeDiscovery.returning([installation("27.0")]),
+            FakeXcodeDiscovery.throwing(SomeError()),
+        ])
+
+        let result = try await composite.discoverInstallations()
+
+        #expect(result.map(\.shortVersion) == ["27.0"])
+    }
+
+    @Test
+    func throwsWhenEveryMechanismFails() async throws {
+        struct SomeError: Error {}
+        let composite = CompositeXcodeDiscovery([
+            FakeXcodeDiscovery.throwing(SomeError()),
+            FakeXcodeDiscovery.throwing(SomeError()),
+        ])
+
+        await #expect(throws: XcodeDiscoveryError.noInstallationsFound) {
+            try await composite.discoverInstallations()
+        }
+    }
+
+    @Test
     func throwsWhenNoMechanismFindsAnything() async throws {
         struct SomeError: Error {}
         let composite = CompositeXcodeDiscovery([
