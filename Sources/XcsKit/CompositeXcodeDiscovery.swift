@@ -1,9 +1,13 @@
 import XcsCore
 
-/// Tries a primary discovery mechanism first (mdfind), falling back to a
-/// secondary one (/Applications glob) when the primary yields nothing or
-/// throws. Throws `XcodeDiscoveryError.noInstallationsFound` only when both
-/// fail.
+/// Combines a primary discovery mechanism (mdfind) with a secondary one
+/// (/Applications glob). Both always run: Spotlight can index some volumes
+/// but not the one holding `/Applications`, so a non-empty mdfind result can
+/// still be missing installations the glob finds. Results are merged in
+/// primary-then-fallback order, listing each app path once. A failure of
+/// either mechanism is tolerated; throws
+/// `XcodeDiscoveryError.noInstallationsFound` only when the merged list is
+/// empty.
 public struct CompositeXcodeDiscovery: XcodeDiscovery {
     private let primary: any XcodeDiscovery
     private let fallback: any XcodeDiscovery
@@ -14,17 +18,18 @@ public struct CompositeXcodeDiscovery: XcodeDiscovery {
         self.fallback = fallback
     }
 
-    /// Discovers installations via the primary mechanism, falling back to the secondary one.
+    /// Discovers installations via both mechanisms and merges them, primary first.
     public func discoverInstallations() async throws -> [XcodeInstallation] {
         let primaryResult = await (try? primary.discoverInstallations()) ?? []
-        if !primaryResult.isEmpty {
-            return primaryResult
-        }
+        let fallbackResult = await (try? fallback.discoverInstallations()) ?? []
 
-        let fallbackResult = try await fallback.discoverInstallations()
-        guard !fallbackResult.isEmpty else {
+        var seenPaths = Set<String>()
+        let merged = (primaryResult + fallbackResult).filter { installation in
+            seenPaths.insert(installation.appPath.standardizedFileURL.path).inserted
+        }
+        guard !merged.isEmpty else {
             throw XcodeDiscoveryError.noInstallationsFound
         }
-        return fallbackResult
+        return merged
     }
 }
