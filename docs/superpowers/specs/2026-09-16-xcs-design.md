@@ -104,12 +104,21 @@ real collision shows up in practice.
 
 ## Xcode discovery
 
-`XcodeDiscovery` protocol, implementations tried in order:
+`XcodeDiscovery` protocol. Every implementation runs, and their results
+are merged in this order:
 
-1. `mdfind "kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'"` (primary
-   — Spotlight, catches installs anywhere, not just `/Applications`).
-2. `/Applications/Xcode*.app` glob (fallback if Spotlight is
-   unavailable/disabled, e.g. `mdfind` returns nothing or errors).
+1. `mdfind "kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'"` —
+   Spotlight, catches installs anywhere, not just `/Applications`.
+2. `/Applications/Xcode*.app` and `~/Applications/Xcode*.app` (one level,
+   not recursive), keeping only bundles whose `CFBundleIdentifier` is
+   `com.apple.dt.Xcode`.
+
+Merging (instead of using 2 only when 1 finds nothing) matters because
+Spotlight misses directories whose index is disabled or not yet built: with
+`/Applications` unindexed, `mdfind` can still return an Xcode on another
+volume, and a fallback-only scan would never see `/Applications/Xcode_*.app`.
+The same bundle reported twice (same path, a symlink, or the
+`/System/Volumes/Data` firmlink) is kept once, by device and inode.
 
 Each discovered `.app` is turned into an `XcodeInstallation` (path,
 version from `Info.plist`'s `CFBundleShortVersionString`) via a

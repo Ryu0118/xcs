@@ -4,51 +4,52 @@ import Testing
 @testable import XcsKit
 
 struct CompositeXcodeDiscoveryTests {
-    private struct SomeError: Error {}
-
-    private func installation(_ version: String, in directory: String = "/Applications") -> XcodeInstallation {
-        XcodeInstallation(appPath: URL(filePath: "\(directory)/Xcode_\(version).app"), shortVersion: version)
+    private func installation(_ version: String, at path: String? = nil) -> XcodeInstallation {
+        XcodeInstallation(
+            appPath: URL(filePath: path ?? "/Applications/Xcode_\(version).app"),
+            shortVersion: version
+        )
     }
 
     @Test
-    func mergesFallbackInstallationsThatThePrimaryMissed() async throws {
-        // Spotlight indexes an external volume but not /Applications: mdfind returns a
-        // partial, non-empty list, so the /Applications scan must still contribute.
-        let composite = CompositeXcodeDiscovery(
-            primary: FakeXcodeDiscovery.returning([installation("27.0", in: "/Volumes/External/Applications")]),
-            fallback: FakeXcodeDiscovery.returning([installation("27.2")])
-        )
-
-        let result = try await composite.discoverInstallations()
-
-        #expect(result.map(\.appPath.path) == [
-            "/Volumes/External/Applications/Xcode_27.0.app",
-            "/Applications/Xcode_27.2.app",
+    func mergesInstallationsFromEveryMechanismInOrder() async throws {
+        // Spotlight finds an install that lives off /Applications, but /Applications
+        // itself is not indexed, so only the direct scan sees Xcode_27.2.app.
+        let composite = CompositeXcodeDiscovery([
+            FakeXcodeDiscovery.returning([installation("27.0", at: "/Volumes/Work/Xcode-27.0.app")]),
+            FakeXcodeDiscovery.returning([installation("27.2")]),
         ])
-    }
-
-    @Test
-    func listsAnInstallationFoundByBothMechanismsOnce() async throws {
-        let composite = CompositeXcodeDiscovery(
-            primary: FakeXcodeDiscovery.returning([installation("27.0"), installation("26.6")]),
-            fallback: FakeXcodeDiscovery.returning([installation("26.6"), installation("27.0")])
-        )
 
         let result = try await composite.discoverInstallations()
 
-        #expect(result.map(\.shortVersion) == ["27.0", "26.6"])
+        #expect(result.map(\.shortVersion) == ["27.0", "27.2"])
     }
 
     @Test
-    func treatsAnEquivalentPathSpellingAsTheSameInstallation() async throws {
-        let composite = CompositeXcodeDiscovery(
-            primary: FakeXcodeDiscovery.returning([
-                XcodeInstallation(appPath: URL(filePath: "/Applications/Xcode_27.0.app/"), shortVersion: "27.0"),
+    func keepsOnlyTheFirstEntryForTheSamePath() async throws {
+        let composite = CompositeXcodeDiscovery([
+            FakeXcodeDiscovery.returning([
+                XcodeInstallation(
+                    appPath: URL(filePath: "/Applications/Xcode_27.2.app"),
+                    shortVersion: "27.2",
+                    licenseType: .gm
+                ),
             ]),
-            fallback: FakeXcodeDiscovery.returning([
-                XcodeInstallation(appPath: URL(filePath: "/Applications/./Xcode_27.0.app"), shortVersion: "27.0"),
-            ])
-        )
+            FakeXcodeDiscovery.returning([installation("27.2"), installation("26.6")]),
+        ])
+
+        let result = try await composite.discoverInstallations()
+
+        #expect(result.map(\.shortVersion) == ["27.2", "26.6"])
+        #expect(result.first?.licenseType == .gm)
+    }
+
+    @Test
+    func treatsPathsThatDifferOnlyByTrailingSlashOrDotSegmentsAsTheSameApp() async throws {
+        let composite = CompositeXcodeDiscovery([
+            FakeXcodeDiscovery.returning([installation("27.2", at: "/Applications/Xcode_27.2.app/")]),
+            FakeXcodeDiscovery.returning([installation("27.2", at: "/Applications/./Xcode_27.2.app")]),
+        ])
 
         let result = try await composite.discoverInstallations()
 
@@ -56,11 +57,57 @@ struct CompositeXcodeDiscoveryTests {
     }
 
     @Test
-    func keepsThePrimaryResultWhenTheFallbackThrows() async throws {
-        let composite = CompositeXcodeDiscovery(
-            primary: FakeXcodeDiscovery.returning([installation("27.0")]),
-            fallback: FakeXcodeDiscovery.throwing(SomeError())
-        )
+    func treatsASymlinkAndItsTargetAsTheSameApp() async throws {
+        try await ConfigurationTestSupport.withDirectory { root in
+            let realApp = root.appending(path: "Xcode_27.2.app")
+            try FileManager.default.createDirectory(at: realApp, withIntermediateDirectories: true)
+            let link = root.appending(path: "Xcode.app")
+            try FileManager.default.createSymbolicLink(at: link, withDestinationURL: realApp)
+
+            let composite = CompositeXcodeDiscovery([
+                FakeXcodeDiscovery.returning([installation("27.2", at: link.path)]),
+                FakeXcodeDiscovery.returning([installation("27.2", at: realApp.path)]),
+            ])
+
+            let result = try await composite.discoverInstallations()
+
+            #expect(result.count == 1)
+            #expect(result.first?.appPath == URL(filePath: link.path))
+        }
+    }
+
+    @Test
+    func usesTheRemainingMechanismsWhenOneReturnsNothing() async throws {
+        let composite = CompositeXcodeDiscovery([
+            FakeXcodeDiscovery.returning([]),
+            FakeXcodeDiscovery.returning([installation("26.6")]),
+        ])
+
+        let result = try await composite.discoverInstallations()
+
+        #expect(result.map(\.shortVersion) == ["26.6"])
+    }
+
+    @Test
+    func usesTheRemainingMechanismsWhenOneThrows() async throws {
+        struct SomeError: Error {}
+        let composite = CompositeXcodeDiscovery([
+            FakeXcodeDiscovery.throwing(SomeError()),
+            FakeXcodeDiscovery.returning([installation("26.6")]),
+        ])
+
+        let result = try await composite.discoverInstallations()
+
+        #expect(result.map(\.shortVersion) == ["26.6"])
+    }
+
+    @Test
+    func keepsEarlierResultsWhenALaterMechanismThrows() async throws {
+        struct SomeError: Error {}
+        let composite = CompositeXcodeDiscovery([
+            FakeXcodeDiscovery.returning([installation("27.0")]),
+            FakeXcodeDiscovery.throwing(SomeError()),
+        ])
 
         let result = try await composite.discoverInstallations()
 
@@ -68,35 +115,12 @@ struct CompositeXcodeDiscoveryTests {
     }
 
     @Test
-    func fallsBackWhenThePrimaryReturnsNothing() async throws {
-        let composite = CompositeXcodeDiscovery(
-            primary: FakeXcodeDiscovery.returning([]),
-            fallback: FakeXcodeDiscovery.returning([installation("26.6")])
-        )
-
-        let result = try await composite.discoverInstallations()
-
-        #expect(result.map(\.shortVersion) == ["26.6"])
-    }
-
-    @Test
-    func fallsBackWhenThePrimaryThrows() async throws {
-        let composite = CompositeXcodeDiscovery(
-            primary: FakeXcodeDiscovery.throwing(SomeError()),
-            fallback: FakeXcodeDiscovery.returning([installation("26.6")])
-        )
-
-        let result = try await composite.discoverInstallations()
-
-        #expect(result.map(\.shortVersion) == ["26.6"])
-    }
-
-    @Test
-    func throwsWhenBothMechanismsFindNothing() async throws {
-        let composite = CompositeXcodeDiscovery(
-            primary: FakeXcodeDiscovery.returning([]),
-            fallback: FakeXcodeDiscovery.returning([])
-        )
+    func throwsWhenEveryMechanismFails() async throws {
+        struct SomeError: Error {}
+        let composite = CompositeXcodeDiscovery([
+            FakeXcodeDiscovery.throwing(SomeError()),
+            FakeXcodeDiscovery.throwing(SomeError()),
+        ])
 
         await #expect(throws: XcodeDiscoveryError.noInstallationsFound) {
             try await composite.discoverInstallations()
@@ -104,11 +128,12 @@ struct CompositeXcodeDiscoveryTests {
     }
 
     @Test
-    func throwsWhenBothMechanismsFail() async throws {
-        let composite = CompositeXcodeDiscovery(
-            primary: FakeXcodeDiscovery.throwing(SomeError()),
-            fallback: FakeXcodeDiscovery.throwing(SomeError())
-        )
+    func throwsWhenNoMechanismFindsAnything() async throws {
+        struct SomeError: Error {}
+        let composite = CompositeXcodeDiscovery([
+            FakeXcodeDiscovery.returning([]),
+            FakeXcodeDiscovery.throwing(SomeError()),
+        ])
 
         await #expect(throws: XcodeDiscoveryError.noInstallationsFound) {
             try await composite.discoverInstallations()

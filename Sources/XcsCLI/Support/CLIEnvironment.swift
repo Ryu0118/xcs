@@ -8,10 +8,14 @@ enum CLIEnvironment {
     }
 
     static func makeDiscovery() -> any XcodeDiscovery {
-        CompositeXcodeDiscovery(
-            primary: MDFindXcodeDiscovery(),
-            fallback: ApplicationsGlobXcodeDiscovery(fileManager: FileManager.default)
-        )
+        CompositeXcodeDiscovery([
+            MDFindXcodeDiscovery(),
+            ApplicationsGlobXcodeDiscovery(fileManager: FileManager.default),
+            ApplicationsGlobXcodeDiscovery(
+                fileManager: FileManager.default,
+                applicationsDirectory: FileManager.default.homeDirectoryForCurrentUser.appending(path: "Applications")
+            ),
+        ])
     }
 
     static func makeCandidateDiscovery(
