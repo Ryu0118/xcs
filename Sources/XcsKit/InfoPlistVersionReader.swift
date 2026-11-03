@@ -45,6 +45,23 @@ public struct InfoPlistVersionReader: Sendable {
         return version
     }
 
+    /// Reads `CFBundleIdentifier` from the app bundle's `Info.plist` at `appPath`.
+    /// Returns `nil` when the file is missing, unreadable, or lacks the key.
+    public func bundleIdentifier(ofAppAt appPath: URL) -> String? {
+        let infoPlistURL = appPath.appending(path: "Contents/Info.plist")
+        guard
+            let data = FileManager.default.contents(atPath: infoPlistURL.path),
+            let plist = try? PropertyListSerialization.propertyList(
+                from: data,
+                options: [],
+                format: nil
+            ) as? [String: Any]
+        else {
+            return nil
+        }
+        return plist["CFBundleIdentifier"] as? String
+    }
+
     /// Reads `licenseType` from `Contents/Resources/LicenseInfo.plist` at `appPath`.
     /// Returns `nil` when the file is missing, unreadable, or its value doesn't match
     /// a known `LicenseType` — this is best-effort metadata, never required for resolution.

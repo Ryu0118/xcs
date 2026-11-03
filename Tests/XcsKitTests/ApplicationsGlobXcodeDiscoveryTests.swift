@@ -12,8 +12,12 @@ struct ApplicationsGlobXcodeDiscoveryTests {
     ) throws -> URL {
         let app = directory.appending(path: name)
         var plist: [String: Any] = [:]
-        if let bundleIdentifier { plist["CFBundleIdentifier"] = bundleIdentifier }
-        if let version { plist["CFBundleShortVersionString"] = version }
+        if let bundleIdentifier {
+            plist["CFBundleIdentifier"] = bundleIdentifier
+        }
+        if let version {
+            plist["CFBundleShortVersionString"] = version
+        }
         let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
         try FileManager.default.createDirectory(
             at: app.appending(path: "Contents"),
